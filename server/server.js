@@ -9,7 +9,7 @@ const { GameCollection } = require('./games.js');
 const games = new GameCollection();
 
 // Serve game client files
-app.use(express.static(path.join(__dirname, '../game')));
+app.use(express.static(path.join(__dirname, '../docs')));
 
 const PORT = process.env.PORT || 55555;
 server.listen(PORT, () => {
