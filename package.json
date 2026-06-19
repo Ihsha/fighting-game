@@ -1,0 +1,14 @@
+{
+  "name": "mk.js-root",
+  "version": "1.0.0",
+  "description": "Multiplayer fighting game by MR Developers",
+  "scripts": {
+    "postinstall": "cd server && npm install",
+    "start": "node server/server.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "author": "MR Developers <https://mr-developers.github.io/website>",
+  "license": "MIT"
+}

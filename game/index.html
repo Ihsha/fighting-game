@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MK.JS - Fighting Game</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- Google Fonts for premium UI typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <script src="src/movement.js"></script>
+    <script src="src/mk.js"></script>
+    <!-- Load Socket.IO client from CDN to support static hosting (e.g. GitHub Pages) -->
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <link rel="stylesheet" href="styles/styles.css" />
+</head>
+<body>
+    <!-- Premium Matchmaking Overlay -->
+    <div id="matchmaking-overlay" class="overlay">
+        <div class="overlay-content">
+            <div class="header">
+                <h1 class="game-title">MK.JS</h1>
+                <p class="subtitle">Multiplayer Fighting Game</p>
+                <div class="developer-info">Developed by <a href="https://mr-developers.github.io/website" target="_blank">MR Developers</a></div>
+            </div>
+            
+            <!-- Main Options -->
+            <div id="menu-view" class="menu-view">
+                <button id="btn-invite" class="menu-btn primary-btn">Invite Player (Host Fight)</button>
+                <button id="btn-join-view" class="menu-btn secondary-btn">Join Fight (Enter Code)</button>
+            </div>
+            
+            <!-- Host / Invite View -->
+            <div id="invite-view" class="menu-view hidden">
+                <h3>Fight Created!</h3>
+                <p>Share this code with player 2 to join the fight:</p>
+                <div class="code-display" id="invite-code">------</div>
+                <div class="code-actions">
+                    <button id="btn-copy-code" class="action-btn">Copy Code</button>
+                    <button id="btn-copy-link" class="action-btn">Copy Invite Link</button>
+                </div>
+                <div class="status-indicator">
+                    <div class="spinner"></div>
+                    <span>Waiting for Player 2 to join...</span>
+                </div>
+                <button id="btn-invite-back" class="menu-btn danger-btn">Cancel</button>
+            </div>
+            
+            <!-- Guest / Join View -->
+            <div id="join-view" class="menu-view hidden">
+                <h3>Join Fight</h3>
+                <p>Enter the 6-digit invitation code from Player 1:</p>
+                <input type="text" id="join-code-input" placeholder="e.g. 582914" maxlength="6" pattern="\d{6}">
+                <button id="btn-join-submit" class="menu-btn primary-btn">Connect & Fight</button>
+                <button id="btn-join-back" class="menu-btn danger-btn">Cancel</button>
+            </div>
+            
+            <!-- Connecting State View -->
+            <div id="connecting-view" class="menu-view hidden">
+                <h3 id="connecting-title">Connecting...</h3>
+                <div class="status-indicator">
+                    <div class="spinner"></div>
+                    <span id="connecting-status">Entering the arena...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- On-Screen Virtual Controller for Mobile Users -->
+    <div id="mobile-controls" class="mobile-controls hidden">
+        <!-- D-Pad (Left Side) -->
+        <div class="dpad">
+            <div class="control-btn dpad-btn" id="ctrl-up" data-key="38">▲</div>
+            <div class="dpad-mid-row">
+                <div class="control-btn dpad-btn" id="ctrl-left" data-key="37">◀</div>
+                <div class="control-btn dpad-btn" id="ctrl-right" data-key="39">▶</div>
+            </div>
+            <div class="control-btn dpad-btn" id="ctrl-down" data-key="40">▼</div>
+        </div>
+        
+        <!-- Combat buttons (Right Side) -->
+        <div class="action-buttons">
+            <div class="control-btn block-btn" id="ctrl-block" data-key="16">BLOCK</div>
+            <div class="combat-grid">
+                <div class="control-btn action-btn-circ" id="ctrl-hp" data-key="65">HP</div>
+                <div class="control-btn action-btn-circ" id="ctrl-lp" data-key="83">LP</div>
+                <div class="control-btn action-btn-circ" id="ctrl-hk" data-key="70">HK</div>
+                <div class="control-btn action-btn-circ" id="ctrl-lk" data-key="68">LK</div>
+            </div>
+        </div>
+    </div>
+
+    <table>
+    <thead>
+        <th>
+            Arena
+        </th>
+        <th>
+            Webcam
+        </th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+                <div id="parent">
+                    <div id="utils">
+                        <div id="player1Name" class="playerName">Sub-Zero</div>
+                        <div id="player1LifeBar" class="lifebar"><div class="life" id="player1Life"></div></div>
+                        <div id="player2Name" class="playerName">Kano</div>
+                        <div id="player2LifeBar" class="lifebar"><div class="life" id="player2Life"></div></div>
+                    </div>
+                    <div id="arena" style="visibility: hidden;">
+                    </div>
+                    <div id="loading" style="visibility: hidden;">
+                        <span class="loadingLabel">Loading...</span>
+                    </div>
+                </div>
+            </td>
+            <td id="webcam-parent">
+            </td>
+        </tr>
+        <tr>
+            <td colspan="2">
+                <h1>Instructions</h1>
+                <p>
+                    <ul class="instructions-list">
+                        <li>For playing with gesture recognition you need Google Chrome 22+ or Firefox 19+.</li>
+                        <li>Choose proper place to position your computer. I recommend you to use white wall as background and dark clothes for best contrast.</li>
+                        <li>Stay outside the scope of the webcam. It needs to capture the background behind you at first place.</li>
+                        <li>Allow to the web page to use your webcam.</li>
+                        <li>If the webcam canvas is black then you can start playing otherwise restart and try again.</li>
+                        <li>Stay in about 2.5 meters away from your computer in the middle of the view zone.</li>
+                        <li>For walking left stay in the left side of the webcam view region and right if you want to walk right. If you want to stop just go back in the middle.</li>
+                        <li>Raise your left or right arm to punch.</li>
+                        <li>Raise your left or right leg to kick.</li>
+                        <li>Squat and your fighter will squat too.</li>
+                        <li>Squat and punch for squat low punch attack.</li>
+                        <li>Enjoy!</li>
+                    </ul>
+                </p>
+            </td>
+        </tr>
+    </tbody>
+    </table>
+    <div class="manual">
+    </div>
+
+    <script>
+        (function () {
+            
+            // Set your backend server URL here if deploying the frontend separately (e.g. to GitHub Pages).
+            // Example: window.gameBackendUrl = "https://your-fighting-game-server.onrender.com";
+            // Leave empty to connect to the same host serving this page.
+            window.gameBackendUrl = "";
+
+            function $(id) {
+                return document.getElementById(id);
+            }
+
+            function setLife(container, life) {
+                container.style.width = life + '%';
+            }
+
+            document.onkeydown = function (e) {
+                if (e.keyCode === 32) {
+                    window.location.reload();
+                }
+            };
+
+            // Detect mobile view & touch support
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+                             ('ontouchstart' in window) || 
+                             navigator.maxTouchPoints > 0;
+            
+            if (isMobile) {
+                $('mobile-controls').classList.remove('hidden');
+                
+                // Initialize virtual controller touch handlers
+                const touchButtons = document.querySelectorAll('.control-btn');
+                touchButtons.forEach(btn => {
+                    const keyCode = parseInt(btn.getAttribute('data-key'), 10);
+                    
+                    const handleStart = (e) => {
+                        e.preventDefault();
+                        btn.classList.add('active');
+                        triggerKeyEvent('keydown', keyCode);
+                    };
+                    
+                    const handleEnd = (e) => {
+                        e.preventDefault();
+                        btn.classList.remove('active');
+                        triggerKeyEvent('keyup', keyCode);
+                    };
+                    
+                    btn.addEventListener('touchstart', handleStart, { passive: false });
+                    btn.addEventListener('touchend', handleEnd, { passive: false });
+                    btn.addEventListener('touchcancel', handleEnd, { passive: false });
+                    
+                    // Mouse support for browser device toolbar testing
+                    btn.addEventListener('mousedown', handleStart);
+                    btn.addEventListener('mouseup', handleEnd);
+                    btn.addEventListener('mouseleave', handleEnd);
+                });
+            }
+
+            function triggerKeyEvent(type, keyCode) {
+                const event = new KeyboardEvent(type, {
+                    bubbles: true,
+                    cancelable: true,
+                    keyCode: keyCode,
+                    which: keyCode
+                });
+                document.dispatchEvent(event);
+            }
+
+            // UI Navigation
+            $('btn-invite').onclick = function() {
+                showView('invite-view');
+                setupHostGame();
+            };
+
+            $('btn-join-view').onclick = function() {
+                showView('join-view');
+                $('join-code-input').focus();
+            };
+
+            $('btn-invite-back').onclick = function() {
+                window.location.reload();
+            };
+
+            $('btn-join-back').onclick = function() {
+                showView('menu-view');
+            };
+
+            $('btn-join-submit').onclick = function() {
+                const code = $('join-code-input').value.trim();
+                if (/^\d{6,7}$/.test(code)) {
+                    setupClientGame(code);
+                } else {
+                    alert('Please enter a valid 6 or 7 digit code.');
+                }
+            };
+
+            function showView(viewId) {
+                const views = ['menu-view', 'invite-view', 'join-view', 'connecting-view'];
+                views.forEach(v => {
+                    if (v === viewId) {
+                        $(v).classList.remove('hidden');
+                    } else {
+                        $(v).classList.add('hidden');
+                    }
+                });
+            }
+
+            function generateCode() {
+                return Math.floor(100000 + Math.random() * 900000).toString();
+            }
+
+            function setupHostGame() {
+                const code = generateCode();
+                $('invite-code').innerText = code;
+                
+                // Set up copy buttons
+                $('btn-copy-code').onclick = function() {
+                    navigator.clipboard.writeText(code).then(() => {
+                        $('btn-copy-code').innerText = 'Copied!';
+                        setTimeout(() => $('btn-copy-code').innerText = 'Copy Code', 2000);
+                    });
+                };
+                
+                $('btn-copy-link').onclick = function() {
+                    const link = window.location.origin + window.location.pathname + '?join=' + code;
+                    navigator.clipboard.writeText(link).then(() => {
+                        $('btn-copy-link').innerText = 'Copied Link!';
+                        setTimeout(() => $('btn-copy-link').innerText = 'Copy Invite Link', 2000);
+                    });
+                };
+
+                startNetworkGame(code, true);
+            }
+
+            function setupClientGame(code) {
+                showView('connecting-view');
+                $('connecting-title').innerText = 'Joining Fight...';
+                $('connecting-status').innerText = 'Connecting to match code ' + code + '...';
+                
+                startNetworkGame(code, false);
+            }
+
+            function startNetworkGame(code, isHost) {
+                var options = {
+                    arena: {
+                        container: $('arena'),
+                        arena: mk.arenas.types.THRONE_ROOM
+                    },
+                    fighters: [{ name: 'Subzero' }, { name: 'Kano' }],
+                    callbacks: {
+                        attack: function (f, o, l) {
+                            if (o.getName() === 'kano') {
+                                setLife($('player2Life'), o.getLife());
+                            } else {
+                                setLife($('player1Life'), o.getLife());
+                            }
+                        },
+                        'player-connected': function() {
+                            hideOverlayAndStart();
+                        },
+                        'connection-success': function() {
+                            if (!isHost) {
+                                hideOverlayAndStart();
+                            }
+                        },
+                        'connection-error': function(errCode) {
+                            showView('join-view');
+                            if (errCode === 1) {
+                                alert('Error: Game code already exists!');
+                            } else if (errCode === 2) {
+                                alert('Error: Match code not found! Make sure Player 1 has invited you.');
+                            } else if (errCode === 3) {
+                                alert('Error: This fight is already full!');
+                            } else {
+                                alert('Failed to connect. Error code: ' + errCode);
+                            }
+                        },
+                        'disconnect': function() {
+                            alert('Match disconnected!');
+                            window.location.reload();
+                        }
+                    },
+                    isHost: isHost,
+                    gameName: code,
+                    gameType: 'network'
+                };
+
+                $('loading').style.visibility = 'visible';
+                mk.start(options).ready(function () {
+                    $('loading').style.visibility = 'hidden';
+                });
+            }
+
+            function hideOverlayAndStart() {
+                $('matchmaking-overlay').classList.add('hidden');
+                $('arena').style.visibility = 'visible';
+                $('utils').style.visibility = 'visible';
+            }
+
+            // Check if user came from an invite link
+            const urlParams = new URLSearchParams(window.location.search);
+            const joinCode = urlParams.get('join');
+            if (joinCode && /^\d{6,7}$/.test(joinCode)) {
+                showView('connecting-view');
+                setupClientGame(joinCode);
+            }
+
+        }());
+    </script>
+</body>
+</html>

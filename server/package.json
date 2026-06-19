@@ -1,0 +1,12 @@
+{
+  "name": "mk.js-server",
+  "version": "1.0.0",
+  "author": "MR Developers <https://mr-developers.github.io/website>",
+  "description": "Node.js server for mk.js fighting game",
+  "main": "server.js",
+  "dependencies": {
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5"
+  },
+  "license": "MIT"
+}
