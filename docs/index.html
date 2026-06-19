@@ -322,6 +322,10 @@
                         'disconnect': function() {
                             alert('Match disconnected!');
                             window.location.reload();
+                        },
+                        'connection-failed': function(err) {
+                            showView('menu-view');
+                            alert('Cannot reach the matchmaking server. Please make sure the backend server is online and its URL is correctly configured at the top of docs/index.html.');
                         }
                     },
                     isHost: isHost,

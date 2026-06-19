@@ -571,6 +571,14 @@
         alert('Disconnected from the server.');
       }
     });
+    this._transport.on('connect_error', function (err) {
+      var c = self._callbacks['connection-failed'];
+      if (typeof c === 'function') {
+        c(err);
+      } else {
+        alert('Failed to connect to the backend server.');
+      }
+    });
   };
 
   mk.start = function (options) {
