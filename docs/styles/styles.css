@@ -423,10 +423,21 @@ body, html {
     }
     
     #parent {
+        position: fixed;
+        top: 0;
+        left: 0;
         width: 100vw;
-        height: 66.67vw; /* maintain 3:2 */
+        height: 100vh;
         max-width: none;
-        max-height: 100vh;
+        max-height: none;
+        border: none;
+        border-radius: 0;
+        box-shadow: none;
+        overflow: hidden;
+    }
+    #arena canvas {
+        width: 100vw;
+        height: 100vh;
         border: none;
         border-radius: 0;
     }
