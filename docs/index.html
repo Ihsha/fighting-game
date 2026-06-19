@@ -12,6 +12,13 @@
     <link rel="stylesheet" href="styles/styles.css" />
 </head>
 <body>
+    <!-- Portrait mode warning for mobile users -->
+    <div id="portrait-warning" class="portrait-warning">
+        <div class="warning-icon">🔄</div>
+        <div class="warning-title">Please Rotate Your Device</div>
+        <div class="warning-desc">This game must be played in Landscape mode.</div>
+    </div>
+
     <!-- Premium Matchmaking Overlay -->
     <div id="matchmaking-overlay" class="overlay">
         <div class="overlay-content">
@@ -55,7 +62,10 @@
             <!-- Connecting State View -->
             <div id="connecting-view" class="menu-view hidden">
                 <h3 id="connecting-title">Connecting...</h3>
-                <div class="status-indicator">
+                <div id="quick-join-container" class="hidden">
+                    <button id="btn-quick-join" class="menu-btn primary-btn">Accept Fight & Play</button>
+                </div>
+                <div id="connecting-loader" class="status-indicator">
                     <div class="spinner"></div>
                     <span id="connecting-status">Entering the arena...</span>
                 </div>
@@ -100,11 +110,29 @@
         <tr>
             <td>
                 <div id="parent">
+                    <!-- Game HUD Announcement Overlay -->
+                    <div id="announcement-overlay" class="announcement-overlay hidden">
+                        <div id="announcement-text" class="announcement-text">ROUND 1</div>
+                        <div id="announcement-subtext" class="announcement-subtext">FIGHT!</div>
+                        <button id="btn-restart-match" class="menu-btn primary-btn hidden" style="margin-top: 20px;">Restart Match</button>
+                    </div>
+
                     <div id="utils">
+                        <!-- Player 1 Profile & Score -->
                         <div id="player1Name" class="playerName">Sub-Zero</div>
                         <div id="player1LifeBar" class="lifebar"><div class="life" id="player1Life"></div></div>
+                        <div id="player1RoundScore" class="round-score left-score">
+                            <span class="score-dot" id="p1-dot1"></span>
+                            <span class="score-dot" id="p1-dot2"></span>
+                        </div>
+
+                        <!-- Player 2 Profile & Score -->
                         <div id="player2Name" class="playerName">Kano</div>
                         <div id="player2LifeBar" class="lifebar"><div class="life" id="player2Life"></div></div>
+                        <div id="player2RoundScore" class="round-score right-score">
+                            <span class="score-dot" id="p2-dot1"></span>
+                            <span class="score-dot" id="p2-dot2"></span>
+                        </div>
                     </div>
                     <div id="arena" style="visibility: hidden;">
                     </div>
@@ -210,8 +238,163 @@
                 document.dispatchEvent(event);
             }
 
+            // Mobile Rotation / Fullscreen Request Helper
+            function enableMobileFullscreen() {
+                if (isMobile) {
+                    const docEl = document.documentElement;
+                    const requestFS = docEl.requestFullscreen || docEl.mozRequestFullScreen || docEl.webkitRequestFullscreen || docEl.msRequestFullscreen;
+                    if (requestFS) {
+                        requestFS.call(docEl).then(() => {
+                            if (screen.orientation && screen.orientation.lock) {
+                                screen.orientation.lock('landscape').catch(err => {
+                                    console.log('Orientation lock failed:', err);
+                                });
+                            }
+                        }).catch(err => {
+                            console.log('Fullscreen request failed:', err);
+                        });
+                    }
+                }
+            }
+
+            // Game Round State
+            let player1Wins = 0;
+            let player2Wins = 0;
+            let currentRound = 1;
+            let matchWinnerDetermined = false;
+
+            function updateRoundScoreUI() {
+                $('p1-dot1').classList.remove('win');
+                $('p1-dot2').classList.remove('win');
+                $('p2-dot1').classList.remove('win');
+                $('p2-dot2').classList.remove('win');
+                
+                if (player1Wins >= 1) $('p1-dot1').classList.add('win');
+                if (player1Wins >= 2) $('p1-dot2').classList.add('win');
+                if (player2Wins >= 1) $('p2-dot1').classList.add('win');
+                if (player2Wins >= 2) $('p2-dot2').classList.add('win');
+            }
+
+            function announce(text, subtext, duration, callback) {
+                $('announcement-text').innerText = text;
+                $('announcement-subtext').innerText = subtext;
+                $('announcement-overlay').classList.remove('hidden');
+                $('btn-restart-match').classList.add('hidden');
+                
+                if (duration) {
+                    setTimeout(() => {
+                        $('announcement-overlay').classList.add('hidden');
+                        if (typeof callback === 'function') callback();
+                    }, duration);
+                }
+            }
+
+            function startRoundCountdown() {
+                if (mk.game && mk.game.fighters) {
+                    mk.game.fighters[0].lock();
+                    mk.game.fighters[1].lock();
+                }
+                
+                announce("ROUND " + currentRound, "READY...", 1500, () => {
+                    announce("FIGHT!", "", 1000, () => {
+                        if (mk.game && mk.game.fighters) {
+                            mk.game.fighters[0].unlock();
+                            mk.game.fighters[1].unlock();
+                        }
+                    });
+                });
+            }
+
+            function resetRound() {
+                if (!mk.game || !mk.game.fighters) return;
+                const f1 = mk.game.fighters[0];
+                const f2 = mk.game.fighters[1];
+                
+                f1.setLife(100);
+                f2.setLife(100);
+                setLife($('player1Life'), 100);
+                setLife($('player2Life'), 100);
+                
+                f1.setX(50);
+                f2.setX(470);
+                f1.setY(mk.config.PLAYER_TOP);
+                f2.setY(mk.config.PLAYER_TOP);
+                
+                f1.getMove().stop();
+                f2.getMove().stop();
+                f1.unlock();
+                f2.unlock();
+                f1.setMove(mk.moves.types.STAND);
+                f2.setMove(mk.moves.types.STAND);
+                
+                mk.game.arena.refresh();
+            }
+
+            function startNextRound() {
+                resetRound();
+                startRoundCountdown();
+            }
+
+            function handleRoundEnd(deadFighter) {
+                if (matchWinnerDetermined) return;
+                
+                const deadName = deadFighter.getName();
+                let winnerName = "";
+                if (deadName === 'kano') {
+                    player1Wins++;
+                    winnerName = "Sub-Zero";
+                } else {
+                    player2Wins++;
+                    winnerName = "Kano";
+                }
+                
+                updateRoundScoreUI();
+                
+                if (player1Wins === 2 || player2Wins === 2) {
+                    matchWinnerDetermined = true;
+                    announce(winnerName + " WINS", "MATCH OVER!", null);
+                    $('btn-restart-match').classList.remove('hidden');
+                } else {
+                    announce(winnerName + " WINS", "ROUND " + currentRound, 2000, () => {
+                        currentRound++;
+                        startNextRound();
+                    });
+                }
+            }
+
+            function restartMatch(isNetworkTriggered) {
+                player1Wins = 0;
+                player2Wins = 0;
+                currentRound = 1;
+                matchWinnerDetermined = false;
+                updateRoundScoreUI();
+                
+                resetRound();
+                
+                if (!isNetworkTriggered) {
+                    sendNetworkCustomEvent('restart-match', null);
+                }
+                
+                startRoundCountdown();
+            }
+
+            function sendNetworkCustomEvent(action, payload) {
+                if (mk.game && mk.game._transport) {
+                    mk.game._transport.emit('event', {
+                        type: 'custom',
+                        action: action,
+                        payload: payload
+                    });
+                }
+            }
+
+            $('btn-restart-match').onclick = function() {
+                restartMatch(false);
+            };
+
             // UI Navigation
             $('btn-invite').onclick = function() {
+                enableMobileFullscreen();
                 showView('invite-view');
                 setupHostGame();
             };
@@ -230,6 +413,7 @@
             };
 
             $('btn-join-submit').onclick = function() {
+                enableMobileFullscreen();
                 const code = $('join-code-input').value.trim();
                 if (/^\d{6,7}$/.test(code)) {
                     setupClientGame(code);
@@ -299,12 +483,17 @@
                                 setLife($('player1Life'), o.getLife());
                             }
                         },
+                        'game-end': function(deadFighter) {
+                            handleRoundEnd(deadFighter);
+                        },
                         'player-connected': function() {
                             hideOverlayAndStart();
+                            startRoundCountdown();
                         },
                         'connection-success': function() {
                             if (!isHost) {
                                 hideOverlayAndStart();
+                                startRoundCountdown();
                             }
                         },
                         'connection-error': function(errCode) {
@@ -326,6 +515,11 @@
                         'connection-failed': function(err) {
                             showView('menu-view');
                             alert('Cannot reach the matchmaking server. Please make sure the backend server is online and its URL is correctly configured at the top of docs/index.html.');
+                        },
+                        'custom-event': function(action, payload) {
+                            if (action === 'restart-match') {
+                                restartMatch(true);
+                            }
                         }
                     },
                     isHost: isHost,
@@ -350,7 +544,16 @@
             const joinCode = urlParams.get('join');
             if (joinCode && /^\d{6,7}$/.test(joinCode)) {
                 showView('connecting-view');
-                setupClientGame(joinCode);
+                $('connecting-title').innerText = 'Invited to Fight!';
+                $('connecting-loader').classList.add('hidden');
+                $('quick-join-container').classList.remove('hidden');
+                
+                $('btn-quick-join').onclick = function() {
+                    enableMobileFullscreen();
+                    $('quick-join-container').classList.add('hidden');
+                    $('connecting-loader').classList.remove('hidden');
+                    setupClientGame(joinCode);
+                };
             }
 
         }());

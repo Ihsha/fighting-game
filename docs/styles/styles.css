@@ -545,3 +545,110 @@ body, html {
     border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
+/* Round Score Dot Indicators */
+.round-score {
+    position: absolute;
+    top: 50px;
+    display: flex;
+    gap: 8px;
+}
+.left-score {
+    left: 20px;
+}
+.right-score {
+    right: 20px;
+    flex-direction: row-reverse;
+}
+.score-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    transition: background-color 0.3s, box-shadow 0.3s;
+}
+.score-dot.win {
+    background-color: #ffcc00;
+    box-shadow: 0 0 10px #ffcc00;
+    border-color: #ffffff;
+}
+
+/* Game HUD Announcement Overlay */
+.announcement-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 500;
+    font-family: 'Orbitron', sans-serif;
+    animation: fadeIn 0.3s ease-out;
+}
+.announcement-text {
+    font-size: 3rem;
+    font-weight: 900;
+    color: #ff0055;
+    text-shadow: 0 0 25px rgba(255, 0, 85, 0.8);
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    text-align: center;
+}
+.announcement-subtext {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #ffcc00;
+    text-shadow: 0 0 15px rgba(255, 204, 0, 0.8);
+    letter-spacing: 6px;
+    margin-top: 10px;
+    text-transform: uppercase;
+    text-align: center;
+}
+
+/* Portrait mode warning for mobile users */
+.portrait-warning {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #0d0d13;
+    z-index: 100000;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    font-family: 'Inter', sans-serif;
+}
+.warning-icon {
+    font-size: 4rem;
+    margin-bottom: 20px;
+    animation: rotateWarning 2s infinite ease-in-out;
+}
+@keyframes rotateWarning {
+    0% { transform: rotate(0deg); }
+    50% { transform: rotate(-90deg); }
+    100% { transform: rotate(0deg); }
+}
+.warning-title {
+    font-size: 1.5rem;
+    font-weight: 800;
+    margin-bottom: 10px;
+    text-align: center;
+}
+.warning-desc {
+    font-size: 0.9rem;
+    color: #888899;
+    text-align: center;
+}
+@media (max-width: 768px) and (orientation: portrait) {
+    .portrait-warning {
+        display: flex !important;
+    }
+}
+
